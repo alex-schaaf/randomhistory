@@ -2,6 +2,10 @@
 # Created by https://www.toptal.com/developers/gitignore/api/windows,visualstudiocode,pycharm,linux,python,jupyternotebooks
 # Edit at https://www.toptal.com/developers/gitignore?templates=windows,visualstudiocode,pycharm,linux,python,jupyternotebooks
 
+# (py)noddy
+*.his
+noddyBatchProgress.txt
+
 ### JupyterNotebooks ###
 # gitignore template for Jupyter Notebooks
 # website: http://jupyter.org/
