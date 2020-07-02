@@ -5,6 +5,10 @@
 # (py)noddy
 *.his
 noddyBatchProgress.txt
+*.g00
+*.g01
+*.g02
+*.g12
 
 ### JupyterNotebooks ###
 # gitignore template for Jupyter Notebooks
