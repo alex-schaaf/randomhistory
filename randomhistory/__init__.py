@@ -1,10 +1,101 @@
 import numpy as np
 import pynoddy.history
 import scipy.stats as stats
-from typing import List, Tuple
+import scipy.stats
+from typing import Iterable, List, Tuple, Dict, Union
+import logging
 
 
-class NoddyHistoryGenerator:
+class RandomHistory:
+    def __init__(
+        self, extent: Iterable[float], verbose: bool = False
+    ) -> None:
+        self.extent = extent,
+        
+        self._verbose = verbose
+        if self._verbose:
+            logger = logging.getLogger()
+            logger.setLevel(logging.INFO)
+
+        self.history = []
+
+    def add_event(self, event_type: str, properties: dict) -> None:
+        self.history.append((event_type, properties))
+        logging.info(f"Added '{event_type}' event to stochastic history.")
+
+    def add_events(self, events: List[tuple]) -> None:
+        for event_type, properties in events:
+            self.add_event(event_type, properties)
+        
+    def sample(self):
+        """Generate a sample list of event properties."""
+        # TODO: random seed
+        sample_history = []
+        for event_type, stochastic_event in self.history:
+            event_sample = sample_properties(stochastic_event)
+
+            logging.info(f"Sampled '{event_type}' event from stochastic history.")
+
+            sample_history.append(
+                (event_type, event_sample)
+            )
+        return sample_history
+
+
+def random_positions(extent: Tuple[float], z_offset: float = 0) -> Tuple[stats.uniform]:
+    """Random within-extent position generator.
+
+    Args:
+        extent (Tuple[float]): Model extent x,X,y,Y,z,Z
+        z_offset (float, optional): Vertical offset from bottom (z). 
+            Defaults to 0.
+
+    Returns:
+        (tuple) of X,Y,Z uniform distributions.
+    """
+    return (stats.uniform(extent[0], extent[1]),
+            stats.uniform(extent[2], extent[3]),
+            stats.uniform(extent[4] + z_offset, extent[5]))
+
+
+def sample_properties(dist_dict: dict):
+    """Draw from parameter distribution dictionary and return parametrized
+    one.
+
+    Args:
+        dist_dict: Dictionary of parameter distributions for stochastic
+            event parameters.
+
+    Returns:
+        (dict) Sample from parameter distribution dictionary.
+    """
+    # TODO: random seed
+    sample_dict = {}
+    for property_name, value in dist_dict.items():
+        # if value is a collection (e.g. x,y,z position, layer thicknesses)
+        if type(value) in (list, tuple):
+            samples = []
+            for v in value:
+                # if it's a scipy.stats distribution sample
+                # else just add the the value itself
+                if hasattr(v, "rvs"):
+                    v = v.rvs() # sample value
+                samples.append(v) # append sampled value
+            sample_dict[property_name] = samples
+        # if the value is a string (e.g. layer name property)
+        elif type(value) in [str]:
+            sample_dict[property_name] = value
+        # if the value is a distribution -> sample
+        elif hasattr(value, "rvs"):
+            sample_dict[property_name] = value.rvs()
+    return sample_dict 
+
+
+
+
+
+
+class _RandomHistory:
     def __init__(
         self,
         extent: Tuple[float],
@@ -24,43 +115,54 @@ class NoddyHistoryGenerator:
         self.x = abs(extent[1] - extent[0])
         self.y = abs(extent[3] - extent[2])
         self.z = abs(extent[5] - extent[4])
+
         self.layer_low, self.layer_high = layer_range
         self.faults_low, self.faults_high = fault_range
+
         self.verbose = verbose
 
         # defaults
         self.n_layers = self.layer_high
         self.n_faults = self.faults_low
 
+        # default stats
         self.dist_faults = {
-            "pos": self._random_pos(),
-            "dip_dir": np.random.choice([stats.uniform(60, 120),
-                                         stats.uniform(240, 300)]),
+            "pos": random_positions(self.extent),
+            "dip_dir": np.random.choice(
+                [
+                    stats.uniform(60, 120),
+                    stats.uniform(240, 300)
+                ]
+            ),
             "dip": stats.norm(45, 5),
             "slip": stats.uniform(0, self.z / 4)  # np.random.uniform(0, self.z / 4)
         }
 
         self.dist_strat = {
-            "layer_thickness": [stats.randint(self.z / self.n_layers,
-                                              self.z / self.n_layers + self.z / 8 * self.n_faults)
-                                for l in range(self.n_layers)]
+            "layer_thickness": [
+                stats.randint(
+                    self.z / self.n_layers,
+                    self.z / self.n_layers + self.z / 8 * self.n_faults)
+                for _ in range(self.n_layers)
+            ]
+            
         }
 
         self.dist_tilt = {
-            "pos": self._random_pos(),
+            "pos": random_positions(self.extent),
             "rotation": stats.norm(0, 10),
             "plunge_direction": stats.uniform(0, 360),
             "plunge": stats.norm(0, 10)
         }
 
         self.dist_fold = {
-            "pos": self._random_pos(),
+            "pos": random_positions(self.extent),
             "wavelength": stats.uniform(self.x * 0.1, self.x * 2),
             "amplitude": stats.uniform(self.z * 0.05, self.z * 0.15)
         }
 
         self.dist_unconf = {
-            "pos": self._random_pos(z_offset=self.z / 2),
+            "pos": random_positions(self.extent, z_offset=self.z / 2),
             "dip_direction": stats.uniform(0, 360),
             "dip": stats.norm(0, 5),
         }
@@ -85,18 +187,7 @@ class NoddyHistoryGenerator:
             else:
                 draw_dict[key] = value.rvs()
 
-        return draw_dict
-
-
-    def _random_pos(self, z_offset=0):
-        """Random within-extent position generator.
-
-        Returns:
-            (tuple) of X,Y,Z uniform distributions.
-        """
-        return (stats.uniform(self.extent[0], self.extent[1]),
-                stats.uniform(self.extent[2], self.extent[3]),
-                stats.uniform(self.extent[4] + z_offset, self.extent[5]))
+        return draw_dict  
 
     def _gen_fault(self, n:int):
         """Generate fault event options for fault n.
