@@ -26,15 +26,11 @@ class RandomHistory:
         for event_type, properties in events:
             self.add_event(event_type, properties)
 
-    def sample(self, random_seed: int = None):
+    def sample_events(self, random_seed: int = None):
         """Generate a sample list of event properties."""
         sample_history = []
         for event_type, stochastic_event in self.history:
             event_sample = sample_properties(stochastic_event, random_seed=random_seed)
-
-            logging.info(f"Sampled '{event_type}' event from stochastic\
-                 history.")
-
             sample_history.append(
                 (event_type, event_sample)
             )
