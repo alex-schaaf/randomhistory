@@ -26,12 +26,11 @@ class RandomHistory:
         for event_type, properties in events:
             self.add_event(event_type, properties)
 
-    def sample(self):
+    def sample(self, random_seed: int = None):
         """Generate a sample list of event properties."""
-        # TODO: random seed
         sample_history = []
         for event_type, stochastic_event in self.history:
-            event_sample = sample_properties(stochastic_event)
+            event_sample = sample_properties(stochastic_event, random_seed=random_seed)
 
             logging.info(f"Sampled '{event_type}' event from stochastic\
                  history.")
@@ -45,7 +44,7 @@ class RandomHistory:
 def random_positions(
     extent: Tuple[float],
     z_offset: float = 0
-) -> Tuple[scipy.stats.uniform]:
+) -> tuple:
     """Random within-extent position generator.
 
     Args:
@@ -61,7 +60,7 @@ def random_positions(
             scipy.stats.uniform(extent[4] + z_offset, extent[5]))
 
 
-def sample_properties(dist_dict: dict):
+def sample_properties(dist_dict: dict, random_seed: int = None):
     """Draw from parameter distribution dictionary and return parametrized
     one.
 
@@ -72,7 +71,7 @@ def sample_properties(dist_dict: dict):
     Returns:
         (dict) Sample from parameter distribution dictionary.
     """
-    # TODO: random seed
+    np.random.seed(random_seed)
     sample_dict = {}
     for property_name, value in dist_dict.items():
         # if value is a collection (e.g. x,y,z position, layer thicknesses)
