@@ -1,6 +1,5 @@
 import numpy as np
 import pynoddy.history
-import scipy.stats as stats
 import scipy.stats
 from typing import Iterable, List, Tuple, Dict, Union
 import logging
@@ -11,7 +10,7 @@ class RandomHistory:
         self, extent: Iterable[float], verbose: bool = False
     ) -> None:
         self.extent = extent,
-        
+
         self._verbose = verbose
         if self._verbose:
             logger = logging.getLogger()
@@ -26,7 +25,7 @@ class RandomHistory:
     def add_events(self, events: List[tuple]) -> None:
         for event_type, properties in events:
             self.add_event(event_type, properties)
-        
+
     def sample(self):
         """Generate a sample list of event properties."""
         # TODO: random seed
@@ -34,7 +33,8 @@ class RandomHistory:
         for event_type, stochastic_event in self.history:
             event_sample = sample_properties(stochastic_event)
 
-            logging.info(f"Sampled '{event_type}' event from stochastic history.")
+            logging.info(f"Sampled '{event_type}' event from stochastic\
+                 history.")
 
             sample_history.append(
                 (event_type, event_sample)
@@ -42,20 +42,23 @@ class RandomHistory:
         return sample_history
 
 
-def random_positions(extent: Tuple[float], z_offset: float = 0) -> Tuple[stats.uniform]:
+def random_positions(
+    extent: Tuple[float],
+    z_offset: float = 0
+) -> Tuple[scipy.stats.uniform]:
     """Random within-extent position generator.
 
     Args:
         extent (Tuple[float]): Model extent x,X,y,Y,z,Z
-        z_offset (float, optional): Vertical offset from bottom (z). 
+        z_offset (float, optional): Vertical offset from bottom (z).
             Defaults to 0.
 
     Returns:
         (tuple) of X,Y,Z uniform distributions.
     """
-    return (stats.uniform(extent[0], extent[1]),
-            stats.uniform(extent[2], extent[3]),
-            stats.uniform(extent[4] + z_offset, extent[5]))
+    return (scipy.stats.uniform(extent[0], extent[1]),
+            scipy.stats.uniform(extent[2], extent[3]),
+            scipy.stats.uniform(extent[4] + z_offset, extent[5]))
 
 
 def sample_properties(dist_dict: dict):
@@ -79,8 +82,8 @@ def sample_properties(dist_dict: dict):
                 # if it's a scipy.stats distribution sample
                 # else just add the the value itself
                 if hasattr(v, "rvs"):
-                    v = v.rvs() # sample value
-                samples.append(v) # append sampled value
+                    v = v.rvs()  # sample value
+                samples.append(v)  # append sampled value
             sample_dict[property_name] = samples
         # if the value is a string (e.g. layer name property)
         elif type(value) in [str, int, float]:
@@ -88,4 +91,4 @@ def sample_properties(dist_dict: dict):
         # if the value is a distribution -> sample
         elif hasattr(value, "rvs"):
             sample_dict[property_name] = value.rvs()
-    return sample_dict 
+    return sample_dict
