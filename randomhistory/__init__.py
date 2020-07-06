@@ -55,9 +55,9 @@ def random_positions(
     Returns:
         (tuple) of X,Y,Z uniform distributions.
     """
-    return (scipy.stats.uniform(extent[0], extent[1]),
-            scipy.stats.uniform(extent[2], extent[3]),
-            scipy.stats.uniform(extent[4] + z_offset, extent[5]))
+    return (scipy.stats.uniform(extent[0], extent[1] - extent[0]),
+            scipy.stats.uniform(extent[2], extent[3] - extent[2]),
+            scipy.stats.uniform(extent[4] + z_offset, extent[5] - extent[4]))
 
 
 def sample_properties(dist_dict: dict, random_seed: int = None):
