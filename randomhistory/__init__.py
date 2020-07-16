@@ -18,24 +18,26 @@ class RandomHistory:
 
         self.history = []
 
-    def add_event(self, event_type: str, properties: dict) -> None:
-        self.history.append((event_type, properties))
-        logging.info(f"Added '{event_type}' event to stochastic history.")
+    # def add_event(self, event_type: str, properties: dict) -> None:
+    #     self.history.append((event_type, properties))
+    #     # logging.info(f"Added '{event_type}' event to stochastic history.")
+    #
+    # def add_events(self, events: List[tuple]) -> None:
+    #     for event_type, properties in events:
+    #         self.add_event(event_type, properties)
 
-    def add_events(self, events: List[tuple]) -> None:
-        for event_type, properties in events:
-            self.add_event(event_type, properties)
-
-    def sample_events(self, random_seed: int = None):
+    def sample_events(self, seed: int = None):
         """Generate a sample list of event properties."""
         sample_history = []
-        for event_type, stochastic_event in self.history:
-            event_sample = sample_properties(stochastic_event, random_seed=random_seed)
+        for event in self.history:
+            event_sample = sample_properties(event.get('parameters'), seed=seed)
             sample_history.append(
-                (event_type, event_sample)
+                (event.get('type'), event_sample)
             )
         return sample_history
 
+    def sample_history(self, random_seed: int = None):
+        pass
 
 def random_positions(
     extent: Tuple[float],
@@ -56,7 +58,7 @@ def random_positions(
             scipy.stats.uniform(extent[4] + z_offset, extent[5] - extent[4]))
 
 
-def sample_properties(dist_dict: dict, random_seed: int = None):
+def sample_properties(event_params: dict, seed: int = None):
     """Draw from parameter distribution dictionary and return parametrized
     one.
 
@@ -67,9 +69,9 @@ def sample_properties(dist_dict: dict, random_seed: int = None):
     Returns:
         (dict) Sample from parameter distribution dictionary.
     """
-    np.random.seed(random_seed)
+    np.random.seed(seed)
     sample_dict = {}
-    for property_name, value in dist_dict.items():
+    for property_name, value in event_params.items():
         # if value is a collection (e.g. x,y,z position, layer thicknesses)
         if type(value) in (list, tuple):
             samples = []
