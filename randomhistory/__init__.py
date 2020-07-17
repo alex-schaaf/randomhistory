@@ -30,7 +30,7 @@ class RandomHistory:
         """Generate a sample list of event properties."""
         sample_history = []
         for event in self.history:
-            event_sample = sample_properties(event.get('parameters'), seed=seed)
+            event_sample = sample_properties(event, seed=seed)
             sample_history.append(
                 (event.get('type'), event_sample)
             )
@@ -58,7 +58,7 @@ def random_positions(
             scipy.stats.uniform(extent[4] + z_offset, extent[5] - extent[4]))
 
 
-def sample_properties(event_params: dict, seed: int = None):
+def sample_properties(event: dict, seed: int = None):
     """Draw from parameter distribution dictionary and return parametrized
     one.
 
@@ -70,6 +70,8 @@ def sample_properties(event_params: dict, seed: int = None):
         (dict) Sample from parameter distribution dictionary.
     """
     np.random.seed(seed)
+    event_params = event.get('parameters')
+
     sample_dict = {}
     for property_name, value in event_params.items():
         # if value is a collection (e.g. x,y,z position, layer thicknesses)
