@@ -68,7 +68,8 @@ def sample_event_properties(event: dict, seed: int = None) -> dict:
                 # NORMAL DISTRIBUTION
                 loc = p.get('value')
                 scale = p.get('scale')
-                value = scipy.stats.norm(loc=loc, scale=scale).rvs()
+                skew = p.get('skew', 0)
+                value = scipy.stats.skewnorm(a=skew, loc=loc, scale=scale).rvs()
             else:
                 # not supported, treat as certain parameter
                 value = p.get('value')
