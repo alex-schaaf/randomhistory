@@ -18,26 +18,19 @@ class RandomHistory:
 
         self.history = []
 
-    # def add_event(self, event_type: str, properties: dict) -> None:
-    #     self.history.append((event_type, properties))
-    #     # logging.info(f"Added '{event_type}' event to stochastic history.")
-    #
-    # def add_events(self, events: List[tuple]) -> None:
-    #     for event_type, properties in events:
-    #         self.add_event(event_type, properties)
-
     def sample_events(self, seed: int = None):
         """Generate a sample list of event properties."""
         sample_history = []
         for event in self.history:
-            event_sample = sample_properties(event, seed=seed)
+            event_sample = sample_event_properties(event, seed=seed)
             sample_history.append(
                 (event.get('type'), event_sample)
             )
         return sample_history
 
     def sample_history(self, random_seed: int = None):
-        pass
+        raise NotImplementedError
+
 
 def random_positions(
     extent: Tuple[float],
@@ -53,9 +46,48 @@ def random_positions(
     Returns:
         (tuple) of X,Y,Z uniform distributions.
     """
-    return (scipy.stats.uniform(extent[0], extent[1] - extent[0]),
-            scipy.stats.uniform(extent[2], extent[3] - extent[2]),
-            scipy.stats.uniform(extent[4] + z_offset, extent[5] - extent[4]))
+    return (
+        scipy.stats.uniform(extent[0], extent[1] - extent[0]),
+        scipy.stats.uniform(extent[2], extent[3] - extent[2]),
+        scipy.stats.uniform(extent[4] + z_offset, extent[5] - extent[4])
+    )
+
+
+def sample_event_properties(event: dict, seed: int = None) -> dict:
+    # TODO: Stratigraphy event handling
+    event_sample = {}
+    parameters = event.get('parameters')
+    if seed:
+        np.random.seed(seed)
+
+    for pname, p in parameters.items():
+        if p.get('uncertain'):
+            # is uncertain
+            distribution_type = p.get('distribution')
+            if distribution_type == 'norm':
+                # NORMAL DISTRIBUTION
+                loc = p.get('value')
+                scale = p.get('scale')
+                value = scipy.stats.norm(loc=loc, scale=scale).rvs()
+            else:
+                # not supported, treat as certain parameter
+                value = p.get('value')
+        else:
+            value = p.get('value')
+
+        event_sample[pname] = value
+
+    # pop and merge X,Y,Z into noddy pos parameter [X, Y, Z]
+    keys = event_sample.keys()
+    if 'X' in keys and 'Y' in keys and 'Z' in keys:
+        pos = []
+        for coord in ['X', 'Y', 'Z']:
+            pos.append(event_sample.pop(coord))
+        event_sample['pos'] = pos
+
+    print(event_sample)
+
+    return event_sample
 
 
 def sample_properties(event: dict, seed: int = None):
