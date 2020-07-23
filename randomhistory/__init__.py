@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.stats import distributions
 import pynoddy.history
 import scipy.stats
 from typing import Iterable, List, Tuple, Dict, Union
@@ -53,6 +54,18 @@ def random_positions(
     )
 
 
+def _parse_distribution(parameter: dict):
+    distribution_type = parameter.get('distribution')
+    if distribution_type == 'norm':
+        # NORMAL DISTRIBUTION
+        loc = parameter.get('value')
+        scale = parameter.get('scale')
+        skew = parameter.get('skew', 0)
+        return scipy.stats.skewnorm(a=skew, loc=loc, scale=scale)
+    else:
+        print(f'Distribution type "{distribution_type}" not supported.')
+
+
 def sample_event_properties(event: dict, seed: int = None) -> dict:
     # TODO: Stratigraphy event handling
     event_sample = {}
@@ -63,16 +76,11 @@ def sample_event_properties(event: dict, seed: int = None) -> dict:
     for pname, p in parameters.items():
         if p.get('uncertain'):
             # is uncertain
-            distribution_type = p.get('distribution')
-            if distribution_type == 'norm':
-                # NORMAL DISTRIBUTION
-                loc = p.get('value')
-                scale = p.get('scale')
-                skew = p.get('skew', 0)
-                value = scipy.stats.skewnorm(a=skew, loc=loc, scale=scale).rvs()
-            else:
-                # not supported, treat as certain parameter
+            distribution = _parse_distribution(p)
+            if not distribution:
                 value = p.get('value')
+            else:
+                value = distribution.rvs()
         else:
             value = p.get('value')
 
@@ -85,8 +93,6 @@ def sample_event_properties(event: dict, seed: int = None) -> dict:
         for coord in ['X', 'Y', 'Z']:
             pos.append(event_sample.pop(coord))
         event_sample['pos'] = pos
-
-    print(event_sample)
 
     return event_sample
 
