@@ -2,7 +2,7 @@ import numpy as np
 from scipy.stats import distributions
 import pynoddy.history
 import scipy.stats
-from typing import Iterable, List, Tuple, Dict, Union
+from typing import Iterable, List, Optional, Tuple, Dict, Union
 import logging
 
 
@@ -54,7 +54,17 @@ def random_positions(
     )
 
 
-def _parse_distribution(parameter: dict):
+def _parse_distribution(parameter: dict) -> Optional[scipy.stats.skewnorm]:
+    """Parse given parameter dictionary into scipy.stats distribution object.
+
+    Args:
+        parameter (dict): Parameter dictionary with 'distribution' k/v-pair
+            providing the distribution type. Standard scipy.stats arguments
+            are expected as keys for respective parametrization.
+
+    Returns:
+        Optional[scipy.stats.skewnorm]: Parametrized distribution.
+    """
     distribution_type = parameter.get('distribution')
     if distribution_type == 'norm':
         # NORMAL DISTRIBUTION
