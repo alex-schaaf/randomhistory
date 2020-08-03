@@ -105,38 +105,3 @@ def sample_event_properties(event: dict, seed: int = None) -> dict:
         event_sample['pos'] = pos
 
     return event_sample
-
-
-def sample_properties(event: dict, seed: int = None):
-    """Draw from parameter distribution dictionary and return parametrized
-    one.
-
-    Args:
-        dist_dict: Dictionary of parameter distributions for stochastic
-            event parameters.
-
-    Returns:
-        (dict) Sample from parameter distribution dictionary.
-    """
-    np.random.seed(seed)
-    event_params = event.get('parameters')
-
-    sample_dict = {}
-    for property_name, value in event_params.items():
-        # if value is a collection (e.g. x,y,z position, layer thicknesses)
-        if type(value) in (list, tuple):
-            samples = []
-            for v in value:
-                # if it's a scipy.stats distribution sample
-                # else just add the the value itself
-                if hasattr(v, "rvs"):
-                    v = v.rvs()  # sample value
-                samples.append(v)  # append sampled value
-            sample_dict[property_name] = samples
-        # if the value is a string (e.g. layer name property)
-        elif type(value) in [str, int, float]:
-            sample_dict[property_name] = value
-        # if the value is a distribution -> sample
-        elif hasattr(value, "rvs"):
-            sample_dict[property_name] = value.rvs()
-    return sample_dict
