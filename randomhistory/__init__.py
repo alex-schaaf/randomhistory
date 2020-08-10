@@ -18,16 +18,86 @@ class RandomHistory:
             logger.setLevel(logging.INFO)
 
         self.history = []
+        self.events = self.history
+        self.rock_library = None
+        self.rock_sample = []
 
     def sample_events(self, seed: int = None):
         """Generate a sample list of event properties."""
+        self.rock_sample = []
         sample_history = []
-        for event in self.history:
-            event_sample = sample_event_properties(event, seed=seed)
+        for i, event in enumerate(self.history):
+            event_sample = self.sample_event_properties(event, seed=seed)
             sample_history.append(
                 (event.get('type'), event_sample)
             )
         return sample_history
+
+    def sample_event_properties(self, event: dict, seed: int = None):
+        """Sample properties of an event in the event history."""
+        parameters = event.get('parameters')
+        event_type = event.get('type')
+
+        np.random.seed(seed) if seed else None
+
+        event_sample = {}
+        if event_type in ['stratigraphy', 'unconformity']:
+            if parameters.get('num_layers').get('uncertain'):
+                event_sample.update(
+                    self.sample_stratigraphy(
+                        event.get('parameters'),
+                        seed=seed
+                    ))
+            else:
+                for pname, param in parameters.items():
+                    event_sample[pname] = param.get('value')
+
+        for pname, param in parameters.items():
+            if pname in ['num_layers', 'layer_thickness', 'layer_names', 'lithology']:
+                continue  # skip stratigraphic parameters
+            if param.get('uncertain'):
+                # is uncertain
+                distribution = _parse_distribution(param)
+                if not distribution:
+                    value = param.get('value')
+                else:
+                    value = distribution.rvs()
+            else:
+                value = param.get('value')
+
+            event_sample[pname] = value
+
+        # pop and merge X,Y,Z into noddy pos parameter [X, Y, Z]
+        keys = event_sample.keys()
+        if 'X' in keys and 'Y' in keys and 'Z' in keys:
+            pos = []
+            for coord in ['X', 'Y', 'Z']:
+                pos.append(event_sample.pop(coord))
+            event_sample['pos'] = pos
+
+        return event_sample
+
+    def sample_stratigraphy(self, parameters, seed: int = None):
+        """Sample stratigraphy-related parameters for stratigraphy or unconformity
+        events."""
+        stratigraphy = {}
+        np.random.seed(seed) if seed else None
+        num_layers = int(_parse_distribution(parameters.get('num_layers')).rvs())  # sample number of layers
+        layer_thickness = _parse_distribution(  # sample thickness for all layers
+            parameters.get('layer_thickness')
+        ).rvs(size=num_layers)
+        layer_names = [f'Layer {layer + 1}' for layer in range(num_layers)]  # generate layer names
+        stratigraphy.update({
+            "num_layers": num_layers,
+            "layer_thickness": layer_thickness,
+            "layer_names": layer_names
+        })
+        if self.rock_library:
+            lithologies = [rock.get('name') for rock in self.rock_library]
+            lithology = list(np.random.choice(lithologies, size=num_layers, replace=True))
+            self.rock_sample += lithology
+
+        return stratigraphy
 
     def sample_history(self, random_seed: int = None):
         raise NotImplementedError
@@ -72,36 +142,91 @@ def _parse_distribution(parameter: dict) -> Optional[scipy.stats.skewnorm]:
         scale = parameter.get('scale')
         skew = parameter.get('skew', 0)
         return scipy.stats.skewnorm(a=skew, loc=loc, scale=scale)
+        # TODO: truncnorm to cut off negative values
+    elif distribution_type == 'uniform':
+        low = parameter.get('low')
+        high = parameter.get('high')
+        return scipy.stats.uniform(low, high - low)
     else:
         print(f'Distribution type "{distribution_type}" not supported.')
 
 
-def sample_event_properties(event: dict, seed: int = None) -> dict:
-    # TODO: Stratigraphy event handling
-    event_sample = {}
-    parameters = event.get('parameters')
-    if seed:
-        np.random.seed(seed)
-
-    for pname, p in parameters.items():
-        if p.get('uncertain'):
-            # is uncertain
-            distribution = _parse_distribution(p)
-            if not distribution:
-                value = p.get('value')
-            else:
-                value = distribution.rvs()
-        else:
-            value = p.get('value')
-
-        event_sample[pname] = value
-
-    # pop and merge X,Y,Z into noddy pos parameter [X, Y, Z]
-    keys = event_sample.keys()
-    if 'X' in keys and 'Y' in keys and 'Z' in keys:
-        pos = []
-        for coord in ['X', 'Y', 'Z']:
-            pos.append(event_sample.pop(coord))
-        event_sample['pos'] = pos
-
-    return event_sample
+# def sample_event_properties(event: dict, seed: int = None, rock_library: dict = None) -> dict:
+#     # TODO: Unconformity event handling
+#     event_type = event.get('type')
+#     event_sample = {}
+#     parameters = event.get('parameters')
+#     if seed:
+#         np.random.seed(seed)
+#
+#     if event_type in ['stratigraphy', 'unconformity']:
+#         if parameters.get('num_layers').get('uncertain'):
+#             event_sample.update(
+#                 sample_stratigraphy(
+#                     event.get('parameters'), seed=seed, rock_library=rock_library
+#                 ))
+#         else:
+#             for pname, param in parameters.items():
+#                 event_sample[pname] = param.get('value')
+#
+#     for pname, param in parameters.items():
+#         if pname in [
+#             'num_layers', 'layer_thickness', 'layer_names', 'lithology'
+#         ]:
+#             continue  # skip stratigraphic parameters
+#         if param.get('uncertain'):
+#             # is uncertain
+#             distribution = _parse_distribution(param)
+#             if not distribution:
+#                 value = param.get('value')
+#             else:
+#                 value = distribution.rvs()
+#         else:
+#             value = param.get('value')
+#
+#         event_sample[pname] = value
+#
+#     # pop and merge X,Y,Z into noddy pos parameter [X, Y, Z]
+#     keys = event_sample.keys()
+#     if 'X' in keys and 'Y' in keys and 'Z' in keys:
+#         pos = []
+#         for coord in ['X', 'Y', 'Z']:
+#             pos.append(event_sample.pop(coord))
+#         event_sample['pos'] = pos
+#
+#     return event_sample
+#
+#
+# def sample_stratigraphy(
+#         parameters: dict,
+#         seed: int = None,
+#         rock_library: list = None
+# ) -> dict:
+#     """Sample stratigraphy parameters for Stratigraphy or Unconformity event.
+#
+#     Args:
+#         parameters (dict): [description]
+#         seed (int, optional): [description]. Defaults to None.
+#         rock_library (list, optional): [description]
+#
+#     Returns:
+#         dict: [description]
+#     """
+#     stratigraphy = {}
+#     np.random.seed(seed) if seed else None
+#     num_layers = int(_parse_distribution(parameters.get('num_layers')).rvs())  # sample number of layers
+#     layer_thickness = _parse_distribution(  # sample thickness for all layers
+#         parameters.get('layer_thickness')
+#     ).rvs(size=num_layers)
+#     layer_names = [f'Layer {layer + 1}' for layer in range(num_layers)]  # generate layer names
+#     stratigraphy.update({
+#         "num_layers": num_layers,
+#         "layer_thickness": layer_thickness,
+#         "layer_names": layer_names
+#     })
+#     if rock_library:
+#         lithologies = [rock.get('name') for rock in rock_library]
+#         lithology = list(np.random.choice(lithologies, size=num_layers, replace=True))
+#         stratigraphy.update({'lithology': lithology})
+#
+#     return stratigraphy
