@@ -22,12 +22,20 @@ class RandomHistory:
         self.rock_library = None
         self.rock_sample = []
 
-    def sample_events(self, seed: int = None):
+    def sample_events(self, seed: int = None) -> List[Tuple[str, dict]]:
         """Generate a sample list of event properties."""
         self.rock_sample = []
         sample_history = []
         for i, event in enumerate(self.history):
-            event_sample = self.sample_event_properties(event, seed=seed)
+            if event.get('uncertain'):
+                p = event.get('probability')
+                logging.debug(p)
+                if scipy.stats.bernoulli.rvs(p):
+                    event_sample = self.sample_event_properties(event, seed=seed)
+                else:
+                    continue
+            else:
+                event_sample = self.sample_event_properties(event, seed=seed)
             sample_history.append(
                 (event.get('type'), event_sample)
             )
@@ -83,9 +91,9 @@ class RandomHistory:
         stratigraphy = {}
         np.random.seed(seed) if seed else None
         num_layers = int(_parse_distribution(parameters.get('num_layers')).rvs())  # sample number of layers
-        layer_thickness = _parse_distribution(  # sample thickness for all layers
+        layer_thickness = list(_parse_distribution(  # sample thickness for all layers
             parameters.get('layer_thickness')
-        ).rvs(size=num_layers)
+        ).rvs(size=num_layers))
         layer_names = [f'Layer {layer + 1}' for layer in range(num_layers)]  # generate layer names
         stratigraphy.update({
             "num_layers": num_layers,
@@ -142,8 +150,9 @@ def _parse_distribution(parameter: dict) -> Optional[scipy.stats.skewnorm]:
         scale = parameter.get('scale')
         skew = parameter.get('skew', 0)
         return scipy.stats.skewnorm(a=skew, loc=loc, scale=scale)
-        # TODO: truncnorm to cut off negative values
+        # TODO: truncnorm to cut off negative values & out of bounds values for angles
     elif distribution_type == 'uniform':
+        # UNIFORM DISTRIBUTION
         low = parameter.get('low')
         high = parameter.get('high')
         return scipy.stats.uniform(low, high - low)
