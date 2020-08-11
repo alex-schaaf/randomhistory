@@ -22,23 +22,32 @@ class RandomHistory:
         self.rock_library = None
         self.rock_sample = []
 
-    def sample_events(self, seed: int = None) -> List[Tuple[str, dict]]:
-        """Generate a sample list of event properties."""
-        self.rock_sample = []
+    def sample_events(self, seed: int = None):
+        self.rock_sample = []  # reset rock/lith sample
         sample_history = []
+        np.random.seed(seed) if seed else None
+
         for i, event in enumerate(self.history):
-            if event.get('uncertain'):
-                p = event.get('probability')
-                logging.debug(p)
-                if scipy.stats.bernoulli.rvs(p):
-                    event_sample = self.sample_event_properties(event, seed=seed)
-                else:
-                    continue
+            uncertain = event.get('uncertain')
+            if uncertain:
+                probability = event.get('probability')
+                if not scipy.stats.bernoulli.rvs(probability):
+                    continue  # skip if not happening
+
+            event_family = event.get('event_family')
+            if event_family:
+                bounds = event.get('nEvents')
+                n_events = int(scipy.stats.uniform(bounds[0], bounds[1] - bounds[0]).rvs())
+                seeds = np.random.randint(0, 1000000, size=n_events)
             else:
-                event_sample = self.sample_event_properties(event, seed=seed)
-            sample_history.append(
-                (event.get('type'), event_sample)
-            )
+                seeds = [seed]
+
+            for s in seeds:
+                event_sample = self.sample_event_properties(event, seed=s)
+                sample_history.append(
+                    (event.get('type'), event_sample)
+                )
+
         return sample_history
 
     def sample_event_properties(self, event: dict, seed: int = None):
@@ -72,7 +81,6 @@ class RandomHistory:
                     value = distribution.rvs()
             else:
                 value = param.get('value')
-
             event_sample[pname] = value
 
         # pop and merge X,Y,Z into noddy pos parameter [X, Y, Z]
