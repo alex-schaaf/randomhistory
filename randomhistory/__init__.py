@@ -22,7 +22,7 @@ class RandomHistory:
         self.rock_library = None
         self.rock_sample = []
 
-    def sample_events(self, seed: int = None):
+    def sample_events(self, seed: int = None) -> List[Tuple[str, dict]]:
         self.rock_sample = []  # reset rock/lith sample
         sample_history = []
         np.random.seed(seed) if seed else None
