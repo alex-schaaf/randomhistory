@@ -1,6 +1,12 @@
 
 # Created by https://www.toptal.com/developers/gitignore/api/windows,visualstudiocode,pycharm,linux,python,jupyternotebooks
 # Edit at https://www.toptal.com/developers/gitignore?templates=windows,visualstudiocode,pycharm,linux,python,jupyternotebooks
+.idea/*
+.vscode/*
+
+*.npy
+*.csv
+*.json
 
 # (py)noddy
 *.his
@@ -305,3 +311,4 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/windows,visualstudiocode,pycharm,linux,python,jupyternotebooks
+.vscode/settings.json
